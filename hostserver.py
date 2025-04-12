@@ -135,6 +135,16 @@ async def handler(websocket: websockets.ServerConnection):
         with open(filepath, "wb") as f:
             f.write(base64.b64decode(data["data"]))
 
+    async def command():
+        packet = dict()
+        packet["out"], packet["err"] = data["out"], data["err"]
+        await backend_server.send(json.dumps(packet))
+
+    async def run():
+        packet = dict()
+        packet["ack"] = "run"
+        await backend_server.send(json.dumps(packet))
+
     func_map = {
         'setup': setup,
         'hello': hello,
@@ -146,6 +156,8 @@ async def handler(websocket: websockets.ServerConnection):
         'snip': snip,
         "upload": upload,
         "download": download,
+        'command': command,
+        'run': run,
     }
 
     async for message in websocket:
