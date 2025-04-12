@@ -109,6 +109,22 @@ async def handler(websocket: websockets.ServerConnection):
         with open(filepath, "wb") as f:
             f.write(base64.b64decode(data["data"]))
 
+    async def upload():
+        packet = dict(data)
+        with open(data["filename"], mode="rb") as f:
+            packet["data"] = base64.b64encode(f.read()).decode("ascii")
+        await websocket.send(json.dumps(packet))
+
+    async def download():
+        datafolder = f"data/{host['id']}/files"
+        filename = data["filename"]
+        filepath = os.path.join(datafolder, filename)
+
+        os.makedirs(datafolder, exist_ok=True)
+
+        with open(filepath, "wb") as f:
+            f.write(base64.b64decode(data["data"]))
+
     func_map = {
         'setup': setup,
         'hello': hello,
@@ -117,7 +133,9 @@ async def handler(websocket: websockets.ServerConnection):
         'msg': msg,
         'hosts': hosts,
         'cmd': cmd,
-        'snip': snip
+        'snip': snip,
+        "upload": upload,
+        "download": download,
     }
 
     async for message in websocket:

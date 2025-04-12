@@ -64,8 +64,33 @@ async def listen(websocket: websockets.ClientConnection):
             packet["data"] = base64.b64encode(f.read()).decode("ascii")
         await websocket.send(json.dumps(packet))
 
+    async def upload():
+        if not data.get("data", 0):
+            packet = dict(data)
+            await websocket.send(json.dumps(packet))
+            return
+
+        datafolder = f"downloads/"
+        filename = data["filename"]
+        filepath = os.path.join(datafolder, filename)
+
+        os.makedirs(datafolder, exist_ok=True)
+
+        with open(filepath, "wb") as f:
+            f.write(base64.b64decode(data["data"]))
+        print(f"Downloaded {data["filename"]}")
+
+    async def download():
+        packet = dict(data)
+        with open(data["filename"], mode="rb") as f:
+            packet["data"] = base64.b64encode(f.read()).decode("ascii")
+        await websocket.send(json.dumps(packet))
+        print(f"Uploaded {data["filename"]}")
+
     func_map = {
         "snip": snip,
+        "upload": upload,
+        "download": download,
     }
 
     async for message in websocket:
