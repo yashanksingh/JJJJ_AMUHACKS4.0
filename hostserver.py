@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 load_dotenv()
 db = pymongo.MongoClient(os.getenv("CONN_STRING"))["remote"]
 connected = dict()
+backend_server: websockets.ServerConnection
 
 
 async def handler(websocket: websockets.ServerConnection):
@@ -47,6 +48,15 @@ async def handler(websocket: websockets.ServerConnection):
         await websocket.send(host_id)
 
     async def hello():
+        if data["host_id"] == "backend":
+            global backend_server
+            backend_server = websocket
+            host["auth"] = True
+            host["id"] = data["host_id"]
+            print("Connection Established with backend")
+            await websocket.send("Host Server is now connected with Backend")
+            return
+
         res = db["hosts"].find({}, {"_id": 0, "uuid": 1})
         uuids = [_["uuid"] for _ in list(res)]
         res.close()
@@ -158,9 +168,12 @@ async def handler(websocket: websockets.ServerConnection):
             print(f"Invalid key: {e}")
 
     if host["auth"]:
-        del connected[host['id']]
-        await db_update()
-        print("Goodbye")
+        if host["id"] == "backend":
+            print("Connection Lost with backend")
+        else:
+            del connected[host['id']]
+            await db_update()
+            print("Goodbye")
 
 
 async def main():
