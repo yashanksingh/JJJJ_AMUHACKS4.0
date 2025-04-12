@@ -70,10 +70,36 @@ async def handler(websocket: websockets.ServerConnection):
         packet["type"] = "snip"
         await websocket.send(json.dumps(packet))
 
+    async def echo():
+        print(f"Echo: {data['message']}")
+        await websocket.send(data['message'])
+
+    async def msg():
+        print(f"Message: {data['message']}")
+
+    async def hosts():
+        packet = dict()
+        packet["hosts"] = list(connected.keys())
+        await websocket.send(json.dumps(packet))
+
+    async def cmd():
+        try:
+            packet = dict(data)
+            packet["type"] = data["cmd"]
+            del packet["cmd"]
+            del packet["uuid"]
+            await connected[data["uuid"]].send(json.dumps(packet))
+        except KeyError:
+            print("Host is not online or invalid uuid")
+
     func_map = {
         'setup': setup,
         'hello': hello,
         'heartbeat': heartbeat,
+        'echo': echo,
+        'msg': msg,
+        'hosts': hosts,
+        'cmd': cmd,
     }
 
     async for message in websocket:
