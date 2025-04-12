@@ -145,6 +145,26 @@ async def handler(websocket: websockets.ServerConnection):
         packet["ack"] = "run"
         await backend_server.send(json.dumps(packet))
 
+    async def move():
+        packet = dict()
+        packet["ack"] = "move"
+        await backend_server.send(json.dumps(packet))
+
+    async def click():
+        packet = dict()
+        packet["ack"] = "click"
+        await backend_server.send(json.dumps(packet))
+
+    async def write():
+        packet = dict()
+        packet["ack"] = "write"
+        await backend_server.send(json.dumps(packet))
+
+    async def hotkey():
+        packet = dict()
+        packet["ack"] = "hotkey"
+        await backend_server.send(json.dumps(packet))
+
     func_map = {
         'setup': setup,
         'hello': hello,
@@ -158,6 +178,10 @@ async def handler(websocket: websockets.ServerConnection):
         "download": download,
         'command': command,
         'run': run,
+        'move': move,
+        'click': click,
+        'write': write,
+        'hotkey': hotkey,
     }
 
     async for message in websocket:

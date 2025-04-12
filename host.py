@@ -99,12 +99,44 @@ async def listen(websocket: websockets.ClientConnection):
         os.startfile(data["filename"])
         await websocket.send(json.dumps(packet))
 
+    async def move():
+        packet = dict(data)
+        if data["relative"] == "False":
+            pyautogui.moveTo(x=int(data["x"]), y=int(data["y"]))
+        else:
+            pyautogui.moveRel(xOffset=int(data["x"]), yOffset=int(data["y"]))
+        await websocket.send(json.dumps(packet))
+
+    async def click():
+        packet = dict(data)
+        if int(data["x"]) != -1 and int(data["y"]) != -1:
+            pyautogui.click(x=int(data["x"]), y=int(data["y"]), button=data["button"], clicks=int(data["clicks"]))
+        else:
+            pyautogui.click(button=data["button"], clicks=int(data["clicks"]))
+        await websocket.send(json.dumps(packet))
+
+    async def write():
+        packet = dict(data)
+        pyautogui.typewrite(data["text"], float(data["speed"]))
+        if data["enter"] == "True":
+            pyautogui.press('enter')
+        await websocket.send(json.dumps(packet))
+
+    async def hotkey():
+        packet = dict(data)
+        pyautogui.hotkey(data["text"].split())
+        await websocket.send(json.dumps(packet))
+
     func_map = {
         "snip": snip,
         "upload": upload,
         "download": download,
         'command': command,
         'run': run,
+        'move': move,
+        'click': click,
+        'write': write,
+        'hotkey': hotkey,
     }
 
     async for message in websocket:
