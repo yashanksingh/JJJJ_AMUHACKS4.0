@@ -1,5 +1,7 @@
 import asyncio
+import base64
 import datetime
+import glob
 import json
 import os
 from uuid import uuid4
@@ -92,6 +94,21 @@ async def handler(websocket: websockets.ServerConnection):
         except KeyError:
             print("Host is not online or invalid uuid")
 
+    async def snip():
+        datafolder = f"data/{host['id']}/snip"
+        timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"{timestamp}.png"
+        filepath = os.path.join(datafolder, filename)
+
+        os.makedirs(datafolder, exist_ok=True)
+        files = glob.glob("*.png", root_dir=datafolder)
+        older_files = sorted(files)[:-10]
+        for i in older_files:
+            os.remove(os.path.join(datafolder, i))
+
+        with open(filepath, "wb") as f:
+            f.write(base64.b64decode(data["data"]))
+
     func_map = {
         'setup': setup,
         'hello': hello,
@@ -100,6 +117,7 @@ async def handler(websocket: websockets.ServerConnection):
         'msg': msg,
         'hosts': hosts,
         'cmd': cmd,
+        'snip': snip
     }
 
     async for message in websocket:
@@ -128,7 +146,7 @@ async def handler(websocket: websockets.ServerConnection):
 
 
 async def main():
-    async with websockets.serve(handler, "0.0.0.0", 8765):
+    async with websockets.serve(handler, "0.0.0.0", 8765, max_size=100*1024*1024):
         print(f"Listening to connection requests")
         await asyncio.Future()
 

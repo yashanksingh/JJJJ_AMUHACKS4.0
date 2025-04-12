@@ -1,6 +1,9 @@
 import asyncio
+import base64
+import datetime
 import json
 import os
+import pyautogui
 
 import websockets
 from websockets import ConnectionClosed, ConnectionClosedError
@@ -54,7 +57,12 @@ async def heartbeat(websocket: websockets.ClientConnection):
 
 async def listen(websocket: websockets.ClientConnection):
     async def snip():
-        print("requesting snip")
+        print("Taking screenshot")
+        pyautogui.screenshot("snip.png")
+        packet = dict(data)
+        with open("snip.png", mode="rb") as f:
+            packet["data"] = base64.b64encode(f.read()).decode("ascii")
+        await websocket.send(json.dumps(packet))
 
     func_map = {
         "snip": snip,
@@ -74,14 +82,14 @@ async def main():
     while True:
         try:
             print("Connecting to host server")
-            async with websockets.connect(IP) as websocket:
+            async with websockets.connect(IP, max_size=100*1024*1024) as websocket:
                 print("Connection established")
                 await on_ready(websocket)
                 await hello(websocket)
 
                 heartbeat_task = asyncio.create_task(heartbeat(websocket))
                 listen_task = asyncio.create_task(listen(websocket))
-                await websocket.send("Connected")
+
                 await asyncio.gather(listen_task, heartbeat_task)
         except (ConnectionError,
                 ConnectionClosed,
