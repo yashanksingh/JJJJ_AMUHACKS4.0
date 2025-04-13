@@ -91,6 +91,7 @@ async def handler(websocket: websockets.ServerConnection):
 
     async def hosts():
         packet = dict()
+        packet["request_id"] = data["request_id"]
         packet["hosts"] = list(connected.keys())
         await websocket.send(json.dumps(packet))
 
@@ -103,6 +104,10 @@ async def handler(websocket: websockets.ServerConnection):
             await connected[data["uuid"]].send(json.dumps(packet))
         except KeyError:
             print("Host is not online or invalid uuid")
+            packet = dict()
+            packet["request_id"] = data["request_id"]
+            packet["ack"] = "host offline"
+            await backend_server.send(json.dumps(packet))
 
     async def snip():
         datafolder = f"data/{host['id']}/snip"
@@ -119,11 +124,22 @@ async def handler(websocket: websockets.ServerConnection):
         with open(filepath, "wb") as f:
             f.write(base64.b64decode(data["data"]))
 
+        if data.get("request_id", 0):
+            packet = dict()
+            packet["request_id"] = data["request_id"]
+            packet["ack"] = "updated snip"
+            await backend_server.send(json.dumps(packet))
+
     async def upload():
         packet = dict(data)
         with open(data["filename"], mode="rb") as f:
             packet["data"] = base64.b64encode(f.read()).decode("ascii")
         await websocket.send(json.dumps(packet))
+
+        packet = dict()
+        packet["request_id"] = data["request_id"]
+        packet["ack"] = "upload"
+        await backend_server.send(json.dumps(packet))
 
     async def download():
         datafolder = f"data/{host['id']}/files"
@@ -135,33 +151,45 @@ async def handler(websocket: websockets.ServerConnection):
         with open(filepath, "wb") as f:
             f.write(base64.b64decode(data["data"]))
 
+        packet = dict()
+        packet["request_id"] = data["request_id"]
+        packet["type"] = "download"
+        packet["filename"] = data["filename"]
+        await backend_server.send(json.dumps(packet))
+
     async def command():
         packet = dict()
+        packet["request_id"] = data["request_id"]
         packet["out"], packet["err"] = data["out"], data["err"]
         await backend_server.send(json.dumps(packet))
 
     async def run():
         packet = dict()
+        packet["request_id"] = data["request_id"]
         packet["ack"] = "run"
         await backend_server.send(json.dumps(packet))
 
     async def move():
         packet = dict()
+        packet["request_id"] = data["request_id"]
         packet["ack"] = "move"
         await backend_server.send(json.dumps(packet))
 
     async def click():
         packet = dict()
+        packet["request_id"] = data["request_id"]
         packet["ack"] = "click"
         await backend_server.send(json.dumps(packet))
 
     async def write():
         packet = dict()
+        packet["request_id"] = data["request_id"]
         packet["ack"] = "write"
         await backend_server.send(json.dumps(packet))
 
     async def hotkey():
         packet = dict()
+        packet["request_id"] = data["request_id"]
         packet["ack"] = "hotkey"
         await backend_server.send(json.dumps(packet))
 

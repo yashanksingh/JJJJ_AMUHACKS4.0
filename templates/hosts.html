@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>BeRD</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="utf-8" />
+    <script>const IP = "http://140.238.240.27:8000"</script>
+
+    <style data-tag="reset-style-sheet">
+        html {  line-height: 1.15;}body {  margin: 0;}* {  box-sizing: border-box;  border-width: 0;  border-style: solid;}p,li,ul,pre,div,h1,h2,h3,h4,h5,h6,figure,blockquote,figcaption {  margin: 0;  padding: 0;}button {  background-color: transparent;}button,input,optgroup,select,textarea {  font-family: inherit;  font-size: 100%;  line-height: 1.15;  margin: 0;}button,select {  text-transform: none;}button,[type="button"],[type="reset"],[type="submit"] {  -webkit-appearance: button;}button::-moz-focus-inner,[type="button"]::-moz-focus-inner,[type="reset"]::-moz-focus-inner,[type="submit"]::-moz-focus-inner {  border-style: none;  padding: 0;}button:-moz-focus,[type="button"]:-moz-focus,[type="reset"]:-moz-focus,[type="submit"]:-moz-focus {  outline: 1px dotted ButtonText;}a {  color: inherit;  text-decoration: inherit;}input {  padding: 2px 4px;}img {  display: block;}html { scroll-behavior: smooth  }
+    </style>
+    <style data-tag="default-style-sheet">
+        html {
+            font-family: Inter;
+            font-size: 16px;
+        }
+
+        body {
+            font-weight: 400;
+            font-style:normal;
+            text-decoration: none;
+            text-transform: none;
+            letter-spacing: normal;
+            line-height: 1.15;
+            color: var(--dl-color-gray-black);
+            background-color: var(--dl-color-gray-white);
+
+        }
+    </style>
+    <link
+            rel="stylesheet"
+            href="https://unpkg.com/animate.css@4.1.1/animate.css"
+    />
+    <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&amp;display=swap"
+            data-tag="font"
+    />
+    <link
+            rel="stylesheet"
+            href="https://unpkg.com/@teleporthq/teleport-custom-scripts/dist/style.css"
+    />
+    <!-- Head Custom Code -->
+
+    <!-- Sidebar class and function -->
+    <style>
+        .app-sidebar.closed{
+            position: absolute;
+            transform: translateX(-600px);
+        }
+    </style>
+
+    <!-- Scrollbar CSS -->
+    <style>
+        ::-webkit-scrollbar{
+            background: transparent;
+            height: 6px;
+            width: 6px;
+        }
+        ::-webkit-scrollbar-thumb{
+            background-color: gray;
+            border-radius: 100px;
+        }
+    </style>
+
+    <!--    <script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>-->
+
+</head>
+<body style="user-select: none">
+<link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
+<div>
+    <link href="{{ url_for('static', path='/main.css') }}" rel="stylesheet" />
+
+    <div class="app-container">
+        <div class="app-decoration"></div>
+        <svg onclick="toggleSidebar()" viewBox="0 0 1024 1024" class="app-open-sidebar">
+            <path d="M426 256l256 256-256 256-60-60 196-196-196-196z"></path>
+        </svg>
+        <!--        <svg onclick="reload_status()" viewBox="0 0 1024 1024" class="app-refresh">-->
+        <!--            <path d="M754 270l100-100v300h-300l138-138q-76-76-180-76-106 0-181 75t-75 181 75 181 181 75q74 0 145-50t97-120h88q-28 112-120 184t-210 72q-140 0-240-100t-100-242 100-242 240-100q60 0 131 29t111 71z"></path>-->
+        <!--        </svg>-->
+        <div class="app-root">
+            <div class="app-sidebar">
+                <svg onclick="toggleSidebar()" viewBox="0 0 1024 1024" class="app-close-sidebar">
+                    <path d="M225.835 286.165l225.835 225.835-225.835 225.835c-16.683 16.683-16.683 43.691 0 60.331s43.691 16.683 60.331 0l225.835-225.835 225.835 225.835c16.683 16.683 43.691 16.683 60.331 0s16.683-43.691 0-60.331l-225.835-225.835 225.835-225.835c16.683-16.683 16.683-43.691 0-60.331s-43.691-16.683-60.331 0l-225.835 225.835-225.835-225.835c-16.683-16.683-43.691-16.683-60.331 0s-16.683 43.691 0 60.331z"></path>
+                </svg>
+                <div class="app-nav-item">
+                    <span class="app-nav-item-text">Home</span>
+                </div>
+                <div class="app-nav-item">
+                    <span class="app-nav-item-text">Status</span>
+                </div>
+                <div class="app-nav-item">
+                    <span class="app-nav-item-text"><a href="/hosts">Hosts</a></span>
+                </div>
+                <div class="app-nav-item">
+                    <span class="app-nav-item-text"><a href="/groups">Groups</a></span>
+                </div>
+            </div>
+            <div class="app-main">
+                <header data-role="Header" class="app-header">
+                    <img alt="logo" class="app-image"
+                         src="https://presentation-website-assets.teleporthq.io/logos/logo.png"
+                    />
+                </header>
+                <div class="app-content">
+                    <div class="app-status">
+                        <div class="app-status-header">
+                            <span class="app-heading-text">
+                                <span>Hosts</span>  <br/>
+                            </span>
+                            <div class="app-view-icons">
+                                <svg viewBox="0 0 1024 1024" class="app-view-icon-list" onclick="view('list')">
+                                    <path d="M810.667 725.333h-298.667c-47.061 0-85.333 38.272-85.333 85.333s38.272 85.333 85.333 85.333h298.667c47.061 0 85.333-38.272 85.333-85.333s-38.272-85.333-85.333-85.333z"></path>
+                                    <path d="M810.667 426.667h-298.667c-47.061 0-85.333 38.272-85.333 85.333s38.272 85.333 85.333 85.333h298.667c47.061 0 85.333-38.272 85.333-85.333s-38.272-85.333-85.333-85.333z"></path>
+                                    <path d="M810.667 128h-298.667c-47.061 0-85.333 38.272-85.333 85.333s38.272 85.333 85.333 85.333h298.667c47.061 0 85.333-38.272 85.333-85.333s-38.272-85.333-85.333-85.333z"></path>
+                                    <path d="M320 810.667c0 58.91-47.756 106.667-106.667 106.667s-106.667-47.756-106.667-106.667c0-58.91 47.756-106.667 106.667-106.667 58.91 0 106.667 47.756 106.667 106.667z"></path>
+                                    <path d="M320 512c0 58.91-47.756 106.667-106.667 106.667s-106.667-47.756-106.667-106.667c0-58.91 47.756-106.667 106.667-106.667 58.91 0 106.667 47.756 106.667 106.667z"></path>
+                                    <path d="M320 213.333c0 58.91-47.756 106.667-106.667 106.667s-106.667-47.756-106.667-106.667c0-58.91 47.756-106.667 106.667-106.667 58.91 0 106.667 47.756 106.667 106.667z"></path>
+                                </svg>
+                                <svg viewBox="0 0 1024 1024" class="app-view-icon-grid" onclick="view('grid')">
+                                    <path d="M128 85.333c-23.552 0-42.667 19.115-42.667 42.667v298.667c0 23.552 19.115 42.667 42.667 42.667h298.667c23.552 0 42.667-19.115 42.667-42.667v-298.667c0-23.552-19.115-42.667-42.667-42.667zM170.667 170.667h213.333v213.333h-213.333zM597.333 85.333c-23.552 0-42.667 19.115-42.667 42.667v298.667c0 23.552 19.115 42.667 42.667 42.667h298.667c23.552 0 42.667-19.115 42.667-42.667v-298.667c0-23.552-19.115-42.667-42.667-42.667zM640 170.667h213.333v213.333h-213.333zM597.333 554.667c-23.552 0-42.667 19.115-42.667 42.667v298.667c0 23.552 19.115 42.667 42.667 42.667h298.667c23.552 0 42.667-19.115 42.667-42.667v-298.667c0-23.552-19.115-42.667-42.667-42.667zM640 640h213.333v213.333h-213.333zM128 554.667c-23.552 0-42.667 19.115-42.667 42.667v298.667c0 23.552 19.115 42.667 42.667 42.667h298.667c23.552 0 42.667-19.115 42.667-42.667v-298.667c0-23.552-19.115-42.667-42.667-42.667zM170.667 640h213.333v213.333h-213.333z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="app-tablediv">
+                            <table>
+                                <thead>
+                                <tr>
+                                    <th id="host-table-state"> </th>
+                                    <th id="host-table-name">Name</th>
+                                    <th id="host-table-seen">Last Seen</th>
+                                    <th id="host-table-uuid">UUID</th>
+                                    <th id="host-table-created">Created</th>
+                                </tr>
+                                </thead>
+                                <tbody id="data-output-status">
+                                <!-- To be populated by js -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="app-griddiv">
+                            <div class="app-griditem">
+                                <img
+                                        alt="image"
+                                        src="{{ url_for('static', path='/blank.png') }}"
+                                        class="app-griditem-image"/>
+                                <div class="app-griditem-footer">
+                                    <svg
+                                            viewBox="0 0 877.7142857142857 1024"
+                                            class="app-griditem-icon">
+                                        <path d="M877.714 512c0 242.286-196.571 438.857-438.857 438.857s-438.857-196.571-438.857-438.857 196.571-438.857 438.857-438.857 438.857 196.571 438.857 438.857z"></path>
+                                    </svg>
+                                    <span class="app-griditem-text">Text</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="app-status-footer"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleSidebar() {
+        document.querySelector('.app-sidebar')
+            .classList.toggle('closed');
+    }
+
+    function resizeFn() {
+        let width = window.innerWidth;
+        if (width <= 1300){
+            document.querySelector('.app-sidebar')
+                .classList.add('closed');
+        }else{
+            document.querySelector('.app-sidebar')
+                .classList.remove('closed');
+        }
+    }
+    window.onresize = resizeFn;
+    resizeFn();
+</script>
+
+<script>
+    function reload_table(){
+        // const token = Cookies.get('access_token');
+        fetch(IP+"/api/all_hosts") //,
+            // {headers: {
+            //         Authorization: token
+            //     }})
+            .then(function(response){
+                return response.json();
+            })
+            .then(function(status){
+                // console.log(status)
+                let icon;
+                let placeholder = document.getElementById('data-output-status');
+                let out = "";
+                let icon_off = `
+              <svg viewBox="0 0 877.7142857142857 1024" class="home-status-icon" style="fill: var(--dl-color-danger-700);">
+                <path d="M877.714 512c0 242.286-196.571 438.857-438.857 438.857s-438.857-196.571-438.857-438.857 196.571-438.857 438.857-438.857 438.857 196.571 438.857 438.857z"></path>
+              </svg>
+            `;
+                let icon_on = `
+              <svg viewBox="0 0 877.7142857142857 1024" class="home-status-icon" style="fill: var(--dl-color-success-700);">
+                <path d="M877.714 512c0 242.286-196.571 438.857-438.857 438.857s-438.857-196.571-438.857-438.857 196.571-438.857 438.857-438.857 438.857 196.571 438.857 438.857z"></path>
+              </svg>
+            `;
+
+                for (let stat of status){
+                    if (stat.status){
+                        icon = icon_on;
+                    }else{
+                        icon = icon_off;
+                    }
+                    out += `
+                        <tr onclick="document.location = '/host/${stat.uuid}/control'" style="cursor: pointer">
+                          <td>${icon}</td>
+                          <td>${stat.name}</td>
+                          <td>${stat.lastSeen}</td>
+                          <td style="font-family: monospace;">${stat.uuid}</td>
+                          <td style="font-family: monospace;">${stat.timeCreated.replace("T", " ").slice(0, -7)}</td>
+                        </tr>
+                    `;
+                }
+                placeholder.innerHTML = out;
+            })
+    }
+
+    async function populate_grid() {
+        await fetch(IP + "/api/all_hosts")
+            .then(function (response) {
+                return response.json();
+            })
+            .then(async function (status) {
+                let icon;
+                let img;
+                let placeholder = document.getElementsByClassName("app-griddiv")[0];
+                let out = "";
+                for (let stat of status) {
+                    if (stat.status) {
+                        icon = `
+                    <svg viewBox="0 0 877.7142857142857 1024" id="grid-icon-${stat.uuid}" class="app-griditem-icon" style="fill: var(--dl-color-success-700);">
+                        <path d="M877.714 512c0 242.286-196.571 438.857-438.857 438.857s-438.857-196.571-438.857-438.857 196.571-438.857 438.857-438.857 438.857 196.571 438.857 438.857z"></path>
+                    </svg>
+                    `;
+                    } else {
+                        icon = `
+                    <svg viewBox="0 0 877.7142857142857 1024" id="grid-icon-${stat.uuid}" class="app-griditem-icon" style="fill: var(--dl-color-danger-700);">
+                        <path d="M877.714 512c0 242.286-196.571 438.857-438.857 438.857s-438.857-196.571-438.857-438.857 196.571-438.857 438.857-438.857 438.857 196.571 438.857 438.857z"></path>
+                    </svg>
+                    `;
+                    }
+
+                    await fetch(IP + "/api/latest_snip/" + stat.uuid + "/s", {cache: 'reload'})
+                        .then(function (response) {
+                            return response.blob()
+                        })
+                        .then(function (blob) {
+                            img = URL.createObjectURL(blob)
+                        })
+
+                    out += `
+                        <div class="app-griditem" onclick="document.location = '/host/${stat.uuid}/control'">
+                            <img
+                                alt="image"
+                                src="${img}"
+                                id="grid-image-${stat.uuid}"
+                                class="app-griditem-image"/>
+                            <div class="app-griditem-footer">
+                                ${icon}
+                                <span class="app-griditem-text">${stat.name}</span>
+                            </div>
+                        </div>
+                        `;
+                }
+                placeholder.innerHTML = out;
+            })
+    }
+
+    function reload_grid() {
+        fetch(IP+"/api/all_hosts")
+            .then(function(response){
+                return response.json();
+            })
+            .then(async function (status) {
+                for (let stat of status) {
+                    if (stat.status) {
+                        document.getElementById('grid-icon-'+stat.uuid).style = "fill: var(--dl-color-success-700);"
+                    } else {
+                        document.getElementById('grid-icon-'+stat.uuid).style = "fill: var(--dl-color-danger-700);"
+                    }
+
+                    updateImage(stat.uuid)
+                }
+            })
+    }
+
+    function updateImage(uuid) {
+        fetch(IP + "/api/latest_snip/" + uuid + "/s", {cache: 'reload'})
+            .then(function (response) {
+                return response.blob()
+            })
+            .then(function (blob) {
+                return URL.createObjectURL(blob)
+            })
+            .then(function (img) {
+                document.getElementById('grid-image-'+uuid).src = img
+            })
+    }
+
+    let table_refresh_timer
+    let grid_refresh_timer
+    function repeat_reload_table() {
+        reload_table()
+        table_refresh_timer = setTimeout(repeat_reload_table, 5000)
+    }
+    function repeat_reload_grid() {
+        reload_grid()
+        grid_refresh_timer = setTimeout(repeat_reload_grid, 5000)
+    }
+
+    function view(type) {
+        if (type === "list") {
+            clearTimeout(grid_refresh_timer)
+            repeat_reload_table()
+            document.querySelector(".app-tablediv").style.display = "flex"
+            document.querySelector(".app-griddiv").style.display = "none"
+            document.querySelector(".app-view-icon-list").style.backgroundColor = "var(--dl-color-streamlit-500)"
+            document.querySelector(".app-view-icon-grid").style.backgroundColor = "transparent"
+        } else {
+            clearTimeout(table_refresh_timer)
+            repeat_reload_grid()
+            document.querySelector(".app-griddiv").style.display = "flex"
+            document.querySelector(".app-tablediv").style.display = "none"
+            document.querySelector(".app-view-icon-grid").style.backgroundColor = "var(--dl-color-streamlit-500)"
+            document.querySelector(".app-view-icon-list").style.backgroundColor = "transparent"
+        }
+    }
+
+    view("list")
+    populate_grid()
+
+    // repeat_reload_table()
+    // repeat_reload_grid()
+</script>
+</body>
+</html>

@@ -1,4 +1,7 @@
 import asyncio
+import glob
+
+import timeago
 import datetime
 import json
 import os
@@ -6,9 +9,11 @@ import threading
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from typing import Optional, Dict
+from uuid import uuid4
 
 import pymongo
 import websockets
+from PIL import Image
 from dotenv import load_dotenv
 from jose import jwt, JWTError
 
@@ -27,6 +32,22 @@ IP = "ws://localhost:8765"
 db = pymongo.MongoClient(os.getenv("CONN_STRING"))["remote"]
 SECRET_KEY = os.getenv("SECRET_KEY")
 websocket: websockets.ClientConnection
+request_mapping = {}
+
+
+def generate_request_id():
+    request_id = str(uuid4())
+    while request_id in request_mapping.keys():
+        request_id = str(uuid4())
+    return request_id
+
+
+async def request_message(request_id):
+    while not request_mapping.get(request_id, 0):
+        await asyncio.sleep(0.1)
+    response = request_mapping[request_id]
+    del request_mapping[request_id]
+    return response
 
 
 async def listen():
@@ -231,7 +252,148 @@ def get_current_user_from_token(token: str = Depends(oauth2_scheme)):
 
 @app.get("/hosts", response_class=HTMLResponse)
 async def show_all_hosts(request: Request, user: dict = Depends(get_current_user_from_token)):
-    return 69
+    return templates.TemplateResponse(request=request, name="hosts.html")
+
+
+@app.get("/host/{uuid}/control", response_class=HTMLResponse)
+async def show_host(request: Request, uuid: str, user: dict = Depends(get_current_user_from_token)):
+    return templates.TemplateResponse(request=request, name="host.html", context={"uuid": uuid})
+
+
+@app.post("/host/{uuid}/submit")
+async def host_form_submit(request: Request, uuid: str, file: Optional[UploadFile] = File(None),
+                           user: dict = Depends(get_current_user_from_token)):
+    form = await request.form()
+    print(uuid)
+    print(dict(form))
+    print(user)
+
+    packet = dict(form)
+    if file:
+        contents = await file.read()
+        with open(file.filename, "wb") as f:
+            f.write(contents)
+            # f.write(file.file)
+        del packet["file"]
+        packet["filename"] = file.filename
+
+    request_id = generate_request_id()
+    packet["type"] = "cmd"
+    packet["uuid"] = uuid
+    packet["request_id"] = request_id
+    await websocket.send(json.dumps(packet))
+
+    async def download():
+        return FileResponse(f"data/{uuid}/files/{data['filename']}", filename=data["filename"],
+                            media_type='application/octet-stream')
+
+    func_map = {
+        "download": download,
+    }
+
+    data = await request_message(request_id)
+    print(data)
+    if data.get("type", 0):
+        resp = await func_map[data['type']]()
+        return resp
+
+    return data
+
+
+#  ------------------------------ APIS ------------------------------
+
+
+@app.get("/api/all_hosts")
+async def get_all_hosts(user: dict = Depends(get_current_user_from_token)):
+    request_id = generate_request_id()
+    packet = dict()
+    packet["type"] = "hosts"
+    packet["request_id"] = request_id
+    await websocket.send(json.dumps(packet))
+    connected = await request_message(request_id)
+
+    res = db["hosts"].find({}, {"_id": 0})
+
+    all_hosts = []
+    for i in list(res):
+        host = dict()
+        host["uuid"] = i["uuid"]
+        host["name"] = i.get("name", "...")
+        host["status"] = True if i["uuid"] in connected["hosts"] else False
+        host["lastSeen"] = timeago.format(i["lastSeen"], datetime.datetime.now(datetime.UTC))
+        host["timeCreated"] = i["timeCreated"]
+        all_hosts.append(host)
+    res.close()
+
+    return all_hosts
+
+
+@app.get("/api/active_hosts")
+async def get_active_hosts(user: dict = Depends(get_current_user_from_token)):
+    request_id = generate_request_id()
+    packet = dict()
+    packet["type"] = "hosts"
+    packet["request_id"] = request_id
+    await websocket.send(json.dumps(packet))
+    connected = await request_message(request_id)
+
+    return connected
+
+
+@app.get("/api/host_info/{uuid}")
+async def get_host_info(uuid: str, user: dict = Depends(get_current_user_from_token)):
+    request_id = generate_request_id()
+    packet = dict()
+    packet["type"] = "hosts"
+    packet["request_id"] = request_id
+    await websocket.send(json.dumps(packet))
+    connected = await request_message(request_id)
+
+    res = db["hosts"].find_one({"uuid": uuid}, {"_id": 0})
+
+    host = dict()
+    host["name"] = res.get("name", "...")
+    host["uuid"] = res["uuid"]
+    host["status"] = True if uuid in connected["hosts"] else False
+    host["lastSeen"] = timeago.format(res["lastSeen"], datetime.datetime.now(datetime.UTC))
+    host["timeCreated"] = res["timeCreated"]
+
+    return host
+
+
+@app.post("/api/update_hostname")
+async def update_hostname(data: dict, user: dict = Depends(get_current_user_from_token)):
+    db["hosts"].update_one({"uuid": data["uuid"]}, {"$set": {"name": data["hostname"]}})
+
+
+@app.get("/api/latest_snip/{uuid}/{scale}")
+async def get_latest_snip(uuid: str, scale: str | None = None, user: dict = Depends(get_current_user_from_token)):
+    datafolder = f"data/{uuid}/snip"
+    files = glob.glob("*.png", root_dir=datafolder)
+    filename = max(files) if files else None
+    if not filename:
+        return FileResponse("static/blank.png", filename="blank.png", media_type="image/png")
+    filepath = os.path.join(datafolder, filename)
+    if scale == 'm':
+        Image.open(filepath).save(f"{filepath[:-4]}.jpg")
+        return FileResponse(os.path.join(datafolder, f"{filename[:-4]}.jpg"), filename=f"{filename[:-4]}.jpg",
+                            media_type="image/jpg")
+    elif scale == 's':
+        img = Image.open(filepath)
+        x, y = img.size
+        img.resize((x // 2, y // 2)).save(f"{filepath[:-4]}.jpg")
+        return FileResponse(os.path.join(datafolder, f"{filename[:-4]}.jpg"), filename=f"{filename[:-4]}.jpg",
+                            media_type="image/jpg")
+    return FileResponse(os.path.join(datafolder, filename), filename=filename, media_type="image/png")
+
+
+@app.get("/api/snip/{uuid}/{filename}")
+async def get_snip(uuid: str, filename, user: dict = Depends(get_current_user_from_token)):
+    datafolder = f"data/{uuid}/snip"
+    if not os.path.exists(os.path.join(datafolder, filename)):
+        return FileResponse("static/blank.png", media_type="image/png")
+    return FileResponse(os.path.join(datafolder, filename), filename=filename, media_type=f"image/{filename[-3:]}")
+
 
 if __name__ == '__main__':
     uvicorn.run(app, host='0.0.0.0', port=8000)
