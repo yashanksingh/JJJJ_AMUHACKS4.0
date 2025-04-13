@@ -300,6 +300,67 @@ async def host_form_submit(request: Request, uuid: str, file: Optional[UploadFil
     return data
 
 
+@app.get("/groups", response_class=HTMLResponse)
+async def show_all_groups(request: Request, user: dict = Depends(get_current_user_from_token)):
+    return templates.TemplateResponse(request=request, name="groups.html")
+
+
+@app.get("/group/{uuid}/info", response_class=HTMLResponse)
+async def show_group_info(request: Request, uuid: str, user: dict = Depends(get_current_user_from_token)):
+    return templates.TemplateResponse(request=request, name="groupinfo.html", context={"uuid": uuid})
+
+
+@app.get("/group/{uuid}/control", response_class=HTMLResponse)
+async def show_group(request: Request, uuid: str, user: dict = Depends(get_current_user_from_token)):
+    return templates.TemplateResponse(request=request, name="group.html", context={"uuid": uuid})
+
+
+@app.post("/group/{uuid}/submit")
+async def group_form_submit(request: Request, uuid: str, file: Optional[UploadFile] = File(None),
+                      user: dict = Depends(get_current_user_from_token)):
+    form = await request.form()
+    uuids = db["groups"].find_one({"uuid": uuid}, {"_id": 0, "hosts": 1})["hosts"]
+    if not uuids:
+        return []
+
+    packet = dict(form)
+    if file:
+        contents = await file.read()
+        with open(file.filename, "wb") as f:
+            f.write(contents)
+        del packet["file"]
+        packet["filename"] = file.filename
+
+    requests = dict()
+    for i in uuids:
+        request_id = generate_request_id()
+        packet["type"] = "cmd"
+        packet["uuid"] = i
+        packet["request_id"] = request_id
+        requests[request_id] = i
+        await websocket.send(json.dumps(packet))
+
+    # async def download():
+    #     return FileResponse(f"data/{uuid}/files/{data['filename']}", filename=data["filename"],
+    #                         media_type='application/octet-stream')
+    #
+    # func_map = {
+    #     "download": download,
+    # }
+
+    data = dict()
+    for request_id in requests.keys():
+        temp = await request_message(request_id)
+        data[requests[request_id]] = temp
+    print(data)
+
+    # if data.get("type", 0):
+    #     resp = await func_map[data['type']]()
+    #     return resp
+
+    return data
+
+
 #  ------------------------------ APIS ------------------------------
 
 
@@ -393,6 +454,125 @@ async def get_snip(uuid: str, filename, user: dict = Depends(get_current_user_fr
     if not os.path.exists(os.path.join(datafolder, filename)):
         return FileResponse("static/blank.png", media_type="image/png")
     return FileResponse(os.path.join(datafolder, filename), filename=filename, media_type=f"image/{filename[-3:]}")
+
+
+@app.get("/api/all_groups")
+async def get_all_groups(user: dict = Depends(get_current_user_from_token)):
+    request_id = generate_request_id()
+    packet = dict()
+    packet["type"] = "hosts"
+    packet["request_id"] = request_id
+    await websocket.send(json.dumps(packet))
+    connected = await request_message(request_id)
+
+    res = db["groups"].find({}, {"_id": 0})
+
+    all_groups = []
+    for i in list(res):
+        group = dict()
+        group["uuid"] = i["uuid"]
+        group["user"] = i["user"]
+        group["name"] = i["name"]
+        group["hosts"] = i["hosts"]
+        on = 0
+        for uuid in i["hosts"]:
+            if uuid in connected["hosts"]:
+                on += 1
+        group["status"] = {"on": on, "off": len(i["hosts"])-on}
+        group["timeCreated"] = i["timeCreated"]
+        all_groups.append(group)
+    res.close()
+
+    return all_groups
+
+
+@app.post("/api/new_group")
+async def create_new_group(user: dict = Depends(get_current_user_from_token)):
+    res = db["groups"].find({}, {"_id": 0, "uuid": 1})
+    uuids = [_["uuid"] for _ in list(res)]
+    res.close()
+    group_id = str(uuid4())
+    while group_id in uuids:
+        group_id = str(uuid4())
+
+    now = datetime.utcnow()
+    document = {
+        "user": user["username"],
+        "uuid": group_id,
+        "name": "...",
+        "hosts": [],
+        "timeCreated": now
+    }
+    db["groups"].insert_one(document)
+
+
+@app.post("/api/update_groupname")
+async def update_groupname(data: dict, user: dict = Depends(get_current_user_from_token)):
+    db["groups"].update_one({"uuid": data["uuid"]}, {"$set": {"name": data["groupname"]}})
+
+
+@app.post("/api/edit_group")
+async def edit_group(data: dict, user: dict = Depends(get_current_user_from_token)):
+    db["groups"].update_one({"uuid": data["uuid"]}, {"$set": {"hosts": data["hosts"]}})
+
+
+@app.post("/api/delete_group")
+async def delete_group(data: dict, user: dict = Depends(get_current_user_from_token)):
+    db["groups"].delete_one({"uuid": data["uuid"]})
+
+
+@app.get("/api/group_info/{uuid}")
+async def get_group_info(uuid: str, user: dict = Depends(get_current_user_from_token)):
+    request_id = generate_request_id()
+    packet = dict()
+    packet["type"] = "hosts"
+    packet["request_id"] = request_id
+    await websocket.send(json.dumps(packet))
+    connected = await request_message(request_id)
+
+    res = db["groups"].find_one({"uuid": uuid}, {"_id": 0})
+
+    group = dict()
+    group["uuid"] = res["uuid"]
+    group["user"] = res["user"]
+    group["name"] = res["name"]
+    group["hosts"] = res["hosts"]
+    on = 0
+    for uuid in res["hosts"]:
+        if uuid in connected["hosts"]:
+            on += 1
+    group["status"] = {"on": on, "off": len(res["hosts"])-on}
+    group["timeCreated"] = res["timeCreated"]
+
+    return group
+
+
+@app.get("/api/group_host_info/{uuid}")
+async def get_group_host_info(uuid: str, user: dict = Depends(get_current_user_from_token)):
+    request_id = generate_request_id()
+    packet = dict()
+    packet["type"] = "hosts"
+    packet["request_id"] = request_id
+    await websocket.send(json.dumps(packet))
+    connected = await request_message(request_id)
+
+    uuids = db["groups"].find_one({"uuid": uuid}, {"_id": 0, "hosts": 1})["hosts"]
+    if not uuids:
+        return []
+    res = db["hosts"].find({"$or": [{"uuid": _} for _ in uuids]}, {"_id": 0})
+
+    all_hosts = []
+    for i in list(res):
+        host = dict()
+        host["uuid"] = i["uuid"]
+        host["name"] = i.get("name", "...")
+        host["status"] = True if i["uuid"] in connected["hosts"] else False
+        host["lastSeen"] = timeago.format(i["lastSeen"], datetime.utcnow())
+        host["timeCreated"] = i["timeCreated"]
+        all_hosts.append(host)
+    res.close()
+
+    return all_hosts
 
 
 if __name__ == '__main__':
